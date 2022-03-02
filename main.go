@@ -5,6 +5,7 @@ import (
 	"github.com/pkg/errors"
 	"math/rand"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -315,11 +316,27 @@ func (b BF) getMobius() BF {
 	return g
 }
 
+func (b BF) getDegree() int {
+	monoms := strings.Split(b.getANF(), "+")
+	a := 0
+	for _, v := range monoms {
+		i := 0
+		for j := range v {
+			if v[j] == 'x' {
+				i++
+			}
+		}
+		if i > a {
+			a = i
+		}
+	}
+	return a
+}
+
 func main() {
 	var b BF
-	b, _ = b.newBFArgs(31, 2)
-	start := time.Now()
-	fmt.Println(b.compare(b.getMobius().getMobius()))
-	duration := time.Since(start)
-	fmt.Println(duration)
+	b, _ = b.newBFArgs(9, 2)
+	b.outVector()
+	fmt.Println(b.getANF())
+	fmt.Println(b.getDegree())
 }
