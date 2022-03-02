@@ -181,25 +181,45 @@ func (b BF) logAdd(b2 BF) BF { //логическое сложение
 }
 
 func (b BF) leftShift(shift int) BF { // сдвиг влево
-	shiftBuffer1 := uint32(0)
-	shiftBuffer2 := uint32(0)
-	for i := range b.functionValue {
-		shiftBuffer1 = b.functionValue[i]
-		b.functionValue[i] <<= shift
-		b.functionValue[i] |= shiftBuffer2
-		shiftBuffer2 = shiftBuffer1 >> (32 - shift)
+	if shift <= 32 {
+		shiftBuffer1 := uint32(0)
+		shiftBuffer2 := uint32(0)
+		for i := range b.functionValue {
+			shiftBuffer1 = b.functionValue[i]
+			b.functionValue[i] <<= shift
+			b.functionValue[i] |= shiftBuffer2
+			shiftBuffer2 = shiftBuffer1 >> (32 - shift)
+		}
+	} else {
+		a := shift / 32
+		for i := 0; i < b.sliceLen-a; i++ {
+			b.functionValue[i+a] = b.functionValue[i]
+		}
+		for i := 0; i < a; i++ {
+			b.functionValue[i] = uint32(0)
+		}
 	}
 	return b
 }
 
 func (b BF) rightShift(shift int) BF { // сдвиг вправо
-	shiftBuffer1 := uint32(0)
-	shiftBuffer2 := uint32(0)
-	for i := b.sliceLen - 1; i >= 0; i-- {
-		shiftBuffer1 = b.functionValue[i]
-		b.functionValue[i] >>= shift
-		b.functionValue[i] |= shiftBuffer2
-		shiftBuffer2 = shiftBuffer1 << (32 - shift)
+	if shift <= 32 {
+		shiftBuffer1 := uint32(0)
+		shiftBuffer2 := uint32(0)
+		for i := b.sliceLen - 1; i >= 0; i-- {
+			shiftBuffer1 = b.functionValue[i]
+			b.functionValue[i] >>= shift
+			b.functionValue[i] |= shiftBuffer2
+			shiftBuffer2 = shiftBuffer1 << (32 - shift)
+		}
+	} else {
+		a := shift / 32
+		for i := a; i < b.sliceLen; i++ {
+			b.functionValue[i] = b.functionValue[i-a]
+		}
+		for i := b.sliceLen - 1; i < b.sliceLen-a; i++ { //мб придктся исправить на i < b.sliceLen-a-1
+			b.functionValue[i] = uint32(0)
+		}
 	}
 	return b
 }
@@ -228,7 +248,6 @@ func (b BF) getANF() string {
 		}
 		k += 32
 	}
-	fmt.Println(indexesOne)
 	var s string
 	if len(indexesOne) > 0 && indexesOne[0] == 0 {
 		s += "1+"
@@ -252,23 +271,25 @@ func (b BF) getANF() string {
 func getMulVector(shift int, len int) BF {
 	var vector BF
 	vector, _ = vector.newBFArgs(len, 0)
-	if shift <= 5 {
-		for i := 0; i < (1 << vector.variablesNumb); {
-			vector = vector.leftShift(1 << shift)
-			vector.functionValue[0] |= (1 << (1 << shift)) - 1
-			vector = vector.leftShift(1 << shift)
-			i = i + (1 << shift) + (1 << shift)
+	if shift == 0 {
+		a := uint32(2863311530)
+		for i := range vector.functionValue {
+			vector.functionValue[i] = a
 		}
-	} else {
-		a := uint32((1 << 32) - 1)
-		for i := 0; i < vector.sliceLen; {
-			for j := 0; j < 1<<(shift+1); {
-				j += 32
-				if j > 1<<shift {
-					vector.functionValue[i] = a
-				}
-				i += 1
-			}
+	} else if shift == 1 {
+		a := uint32(3435973836)
+		for i := range vector.functionValue {
+			vector.functionValue[i] = a
+		}
+	} else if shift == 2 {
+		a := uint32(4042322160)
+		for i := range vector.functionValue {
+			vector.functionValue[i] = a
+		}
+	} else if shift == 3 {
+		a := uint32(4278255360)
+		for i := range vector.functionValue {
+			vector.functionValue[i] = a
 		}
 	}
 	return vector
@@ -277,20 +298,28 @@ func getMulVector(shift int, len int) BF {
 func (b BF) getMobius() BF {
 	var g, s, m, stepVector BF
 	g = b
-	g.outVector()
 	for i := 0; i < b.variablesNumb; i++ {
-		s = s.copyBF(g)
-		s = s.leftShift(1 << i)
-		stepVector = getMulVector(i, b.variablesNumb)
-		m = s.logMul(stepVector)
-		g = g.xor(m)
-		g.outVector()
+		if i < 4 {
+			s = s.copyBF(g)
+			s = s.leftShift(1 << i)
+			stepVector = getMulVector(i, b.variablesNumb)
+			m = s.logMul(stepVector)
+			g = g.xor(m)
+		} else {
+			for j := 1; j < g.sliceLen; {
+				g.functionValue[j] = g.functionValue[j] ^ g.functionValue[j-1]
+				j += 2
+			}
+		}
 	}
 	return g
 }
 
 func main() {
 	var b BF
-	b = b.stringToBF("11111000")
-	b.getMobius()
+	b, _ = b.newBFArgs(31, 2)
+	start := time.Now()
+	fmt.Println(b.compare(b.getMobius().getMobius()))
+	duration := time.Since(start)
+	fmt.Println(duration)
 }
