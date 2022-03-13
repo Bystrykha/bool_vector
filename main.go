@@ -5,7 +5,6 @@ import (
 	"github.com/pkg/errors"
 	"math/rand"
 	"strconv"
-	"strings"
 	"time"
 )
 
@@ -237,9 +236,10 @@ func (b BF) outVector() { // красивый вывод вектора
 }
 
 func (b BF) getANF() string {
+	g := b.getMobius()
 	var indexesOne []int
 	k := 0
-	for _, v := range b.functionValue {
+	for _, v := range g.functionValue {
 		var a uint32 = 1
 		for j := 0; j < 32; j++ {
 			if v&a != 0 {
@@ -250,10 +250,14 @@ func (b BF) getANF() string {
 		k += 32
 	}
 	var s string
-	if len(indexesOne) > 0 && indexesOne[0] == 0 {
-		s += "1+"
-		for i := 1; i < len(indexesOne); i++ {
-			vector := 1 << b.variablesNumb
+	if len(indexesOne) > 0 {
+		a := 0
+		if indexesOne[0] == 0 {
+			s += "1+"
+			a = 1
+		}
+		for i := a; i < len(indexesOne); i++ {
+			vector := 1 << g.variablesNumb
 			for j := 0; vector > 0; j++ {
 				vector >>= 1
 				if indexesOne[i]&vector > 0 {
@@ -262,9 +266,9 @@ func (b BF) getANF() string {
 			}
 			s += "+"
 		}
-		fmt.Println(s[0 : len(s)-1])
+		s = s[0 : len(s)-1]
 	} else if len(indexesOne) == 0 {
-		fmt.Println("The function does not contain 1.")
+		s = "0"
 	}
 	return s
 }
@@ -292,6 +296,11 @@ func getMulVector(shift int, len int) BF {
 		for i := range vector.functionValue {
 			vector.functionValue[i] = a
 		}
+	} else if shift == 4 {
+		a := uint32(4294901760)
+		for i := range vector.functionValue {
+			vector.functionValue[i] = a
+		}
 	}
 	return vector
 }
@@ -300,7 +309,7 @@ func (b BF) getMobius() BF {
 	var g, s, m, stepVector BF
 	g = b
 	for i := 0; i < b.variablesNumb; i++ {
-		if i < 4 {
+		if i < 5 {
 			s = s.copyBF(g)
 			s = s.leftShift(1 << i)
 			stepVector = getMulVector(i, b.variablesNumb)
@@ -316,27 +325,43 @@ func (b BF) getMobius() BF {
 	return g
 }
 
-func (b BF) getDegree() int {
-	monoms := strings.Split(b.getANF(), "+")
-	a := 0
-	for _, v := range monoms {
-		i := 0
-		for j := range v {
-			if v[j] == 'x' {
-				i++
+func (b BF) getHigherBitNumb() int {
+	i := len(b.functionValue) - 1
+	for ; i >= 0; i -= 1 {
+		if b.functionValue[i] > 0 {
+			a, higherBitNumb := uint32(1<<31), 0
+			for j := 31; j >= 0; j -= 1 {
+				if a&b.functionValue[i] > 0 {
+					higherBitNumb = 32*i + j
+					return higherBitNumb
+				} else {
+					a = a >> 1
+				}
 			}
 		}
-		if i > a {
-			a = i
-		}
 	}
-	return a
+	return -1
+}
+
+func (b BF) getDegree() int {
+	g := b.getMobius()
+	a := g.getHigherBitNumb()
+	degree, c := 0, g.variablesNumb
+	if a == -1 {
+		return 0
+	}
+	for c >= 1 {
+		if a%(1<<c) >= (1 << (c - 1)) {
+			degree += 1
+		}
+		c -= 1
+	}
+	return degree
 }
 
 func main() {
 	var b BF
-	b, _ = b.newBFArgs(9, 2)
-	b.outVector()
+	b, _ = b.newBFArgs(6, 2)
+	b.getMobius().outVector()
 	fmt.Println(b.getANF())
-	fmt.Println(b.getDegree())
 }
