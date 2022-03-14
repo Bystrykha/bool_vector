@@ -86,7 +86,6 @@ func (b BF) stringToBF(s string) BF { // конструктор по строк�
 	if s == "" {
 		return b.newBF()
 	} else {
-		s = reverse(s)
 		for i := 1; true; i++ {
 			if int(1<<i) >= len(s) {
 				b.variablesNumb = i
@@ -235,11 +234,10 @@ func (b BF) outVector() { // красивый вывод вектора
 	fmt.Println(res)
 }
 
-func (b BF) getANF() string {
-	g := b.getMobius()
+func (b BF) indexesOne() []int {
 	var indexesOne []int
 	k := 0
-	for _, v := range g.functionValue {
+	for _, v := range b.functionValue {
 		var a uint32 = 1
 		for j := 0; j < 32; j++ {
 			if v&a != 0 {
@@ -249,6 +247,12 @@ func (b BF) getANF() string {
 		}
 		k += 32
 	}
+	return indexesOne
+}
+
+func (b BF) getANF() string {
+	g := b.getMobius()
+	indexesOne := g.indexesOne()
 	var s string
 	if len(indexesOne) > 0 {
 		a := 0
@@ -316,52 +320,41 @@ func (b BF) getMobius() BF {
 			m = s.logMul(stepVector)
 			g = g.xor(m)
 		} else {
-			for j := 1; j < g.sliceLen; {
-				g.functionValue[j] = g.functionValue[j] ^ g.functionValue[j-1]
-				j += 2
+			k := 1 << (i - 5)
+			for j := 0; j < len(g.functionValue); {
+				for l := 0; l < k; l += 1 {
+					g.functionValue[j+k] = g.functionValue[j] ^ g.functionValue[j+k]
+					j += 1
+				}
+				j += k
 			}
 		}
 	}
 	return g
 }
 
-func (b BF) getHigherBitNumb() int {
-	i := len(b.functionValue) - 1
-	for ; i >= 0; i -= 1 {
-		if b.functionValue[i] > 0 {
-			a, higherBitNumb := uint32(1<<31), 0
-			for j := 31; j >= 0; j -= 1 {
-				if a&b.functionValue[i] > 0 {
-					higherBitNumb = 32*i + j
-					return higherBitNumb
-				} else {
-					a = a >> 1
-				}
-			}
-		}
-	}
-	return -1
-}
-
 func (b BF) getDegree() int {
 	g := b.getMobius()
-	a := g.getHigherBitNumb()
-	degree, c := 0, g.variablesNumb
-	if a == -1 {
-		return 0
-	}
-	for c >= 1 {
-		if a%(1<<c) >= (1 << (c - 1)) {
-			degree += 1
+	indexesOne := g.indexesOne()
+	functionDegree, c := 0, g.variablesNumb
+	for _, v := range indexesOne {
+		monomWeight := 0
+		for c >= 1 {
+			if v%(1<<c) >= (1 << (c - 1)) {
+				monomWeight += 1
+			}
+			c -= 1
 		}
-		c -= 1
+		if monomWeight > functionDegree {
+			functionDegree = monomWeight
+		}
 	}
-	return degree
+	return functionDegree
 }
 
 func main() {
 	var b BF
-	b, _ = b.newBFArgs(6, 2)
-	b.getMobius().outVector()
+	b = b.stringToBF("00011110")
 	fmt.Println(b.getANF())
+	fmt.Println(b.getDegree())
 }
