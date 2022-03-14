@@ -335,35 +335,23 @@ func (b BF) getMobius() BF {
 
 func (b BF) getDegree() int {
 	g := b.getMobius()
-	g.outVector()
-	funcDegree := 0
-	for i := 0; i < len(g.functionValue); i += 1 {
-		a := uint32(1)
-		for j := 0; j < 32; j += 1 {
-			if g.functionValue[i]&a > 0 {
-				indexOne := 32*i + j
-				monomWeight := 0
-				c := g.variablesNumb
-				for c >= 1 {
-					if indexOne%(1<<c) >= (1 << (c - 1)) {
-						monomWeight += 1
-					}
-					c -= 1
-				}
-				if monomWeight > funcDegree {
-					funcDegree = monomWeight
-				}
-			}
-			a <<= 1
+	indexesOne := g.indexesOne()
+	functionDegree := 0
+	for _, v := range indexesOne {
+		monomWeight := 0
+		for ; v > 0; v = v & (v - 1) {
+			monomWeight += 1
+		}
+		if monomWeight > functionDegree {
+			functionDegree = monomWeight
 		}
 	}
-	return funcDegree
+	return functionDegree
 }
 
 func main() {
 	var b BF
-	b = b.stringToBF("1010101010")
-	b.outVector()
+	b, _ = b.newBFArgs(6, 2)
 	fmt.Println(b.getANF())
 	fmt.Println(b.getDegree())
 }
