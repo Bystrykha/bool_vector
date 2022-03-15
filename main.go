@@ -359,28 +359,25 @@ func (b BF) WalshHadamardTransformation() []int {
 		F[v] = -1
 	}
 
-	for i := 0; i < b.variablesNumb; i++ {
-		k := 1 << (i + 1)
-		var a []int
-		for j := 0; j < len(F); {
-			for f, s := 0, k>>1; s < k; s += 1 {
-				a = append(a, F[j+f]+F[j+s])
-				f += 1
-			}
-			for f, s := 0, k>>1; s < k; s += 1 {
-				a = append(a, F[j+f]-F[j+s])
-				f += 1
+	for i := 0; i < b.variablesNumb; i += 1 {
+		k := 1 << i
+		for j := 0; j < (1 << b.variablesNumb); {
+			for l := 0; l < k; l += 1 {
+				a := F[j]
+				c := F[j+k]
+				F[j] = a + c
+				F[j+k] = a - c
+				j += 1
 			}
 			j += k
 		}
-		F = a
 	}
 	return F
 }
 
 func main() {
 	var b BF
-	b, _ = b.newBFArgs(27, 2)
+	b, _ = b.newBFArgs(29, 2)
 	start := time.Now()
 	b.WalshHadamardTransformation()
 	duration := time.Since(start)
