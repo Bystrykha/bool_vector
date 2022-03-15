@@ -349,9 +349,40 @@ func (b BF) getDegree() int {
 	return functionDegree
 }
 
+func (b BF) WalshHadamardTransformation() []int {
+	var F []int
+	indexesOne := b.indexesOne()
+	for i := 0; i < 1<<b.variablesNumb; i++ {
+		F = append(F, 1)
+	}
+	for _, v := range indexesOne {
+		F[v] = -1
+	}
+
+	for i := 0; i < b.variablesNumb; i++ {
+		k := 1 << (i + 1)
+		var a []int
+		for j := 0; j < len(F); {
+			for f, s := 0, k>>1; s < k; s += 1 {
+				a = append(a, F[j+f]+F[j+s])
+				f += 1
+			}
+			for f, s := 0, k>>1; s < k; s += 1 {
+				a = append(a, F[j+f]-F[j+s])
+				f += 1
+			}
+			j += k
+		}
+		F = a
+	}
+	return F
+}
+
 func main() {
 	var b BF
-	b, _ = b.newBFArgs(6, 2)
-	fmt.Println(b.getANF())
-	fmt.Println(b.getDegree())
+	b, _ = b.newBFArgs(27, 2)
+	start := time.Now()
+	b.WalshHadamardTransformation()
+	duration := time.Since(start)
+	fmt.Println(duration)
 }
