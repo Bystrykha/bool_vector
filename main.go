@@ -375,11 +375,37 @@ func (b BF) WalshHadamardTransformation() []int {
 	return F
 }
 
+func (b BF) correlationDegree() int {
+	F := b.WalshHadamardTransformation()
+	start := time.Now()
+	corDeg := b.variablesNumb
+	for i := 1; i < len(F); i += 1 {
+		if F[i] != 0 {
+			argWeight := 0
+			v := i
+			for ; v > 0; v = v & (v - 1) {
+				argWeight += 1
+			}
+			if corDeg > argWeight-1 {
+				corDeg = argWeight - 1
+				if corDeg == 0 {
+					break
+				}
+			}
+		}
+	}
+	fmt.Println(corDeg)
+	duration := time.Since(start)
+	fmt.Println(duration)
+	return corDeg
+}
+
 func main() {
 	var b BF
-	b, _ = b.newBFArgs(29, 2)
+	//b = b.stringToBF("01100110")
+	b, _ = b.newBFArgs(29, 1)
 	start := time.Now()
-	b.WalshHadamardTransformation()
+	b.correlationDegree()
 	duration := time.Since(start)
 	fmt.Println(duration)
 }
