@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/pkg/errors"
+	_ "golang.org/x/text/currency"
 	"math/rand"
 	"strconv"
 	"time"
@@ -11,19 +12,6 @@ import (
 type BF struct {
 	variablesNumb, sliceLen int      //количество переменных / длина среза, в котором содержаться биты функции
 	functionValue           []uint32 // срез с битами (используется именно срез, поскольку из него можно удалять/добавлять элементы)
-}
-
-func (b BF) newBFArgs2(variablesNumb int, sliceLen int, functionValue []uint32) BF { // конструктор по умолчанию
-	b.variablesNumb = variablesNumb
-	b.sliceLen = sliceLen
-	b.functionValue = functionValue
-	return b
-}
-
-func (b BF) newBF() BF { // конструктор по умолчанию
-	b.variablesNumb = 0
-	b.sliceLen = 0
-	return b
 }
 
 func fillFunc(len int, function []uint32, value int) []uint32 { //заполнение функции только 0 или 1
@@ -45,6 +33,73 @@ func randFunc(len int, function []uint32) []uint32 { // заполнение ф�
 		function = append(function, uint32(rand.Intn(4294967296)))
 	}
 	return function
+}
+
+func reverse(s string) string { // разворот строки
+	runes := []rune(s)
+	for i, j := 0, len(runes)-1; i < j; i, j = i+1, j-1 {
+		runes[i], runes[j] = runes[j], runes[i]
+	}
+	return string(runes)
+}
+
+func getMulVector(shift int, len int) BF {
+	var vector BF
+	vector, _ = vector.newBFArgs(len, 0)
+	if shift == 0 {
+		a := uint32(2863311530)
+		for i := range vector.functionValue {
+			vector.functionValue[i] = a
+		}
+	} else if shift == 1 {
+		a := uint32(3435973836)
+		for i := range vector.functionValue {
+			vector.functionValue[i] = a
+		}
+	} else if shift == 2 {
+		a := uint32(4042322160)
+		for i := range vector.functionValue {
+			vector.functionValue[i] = a
+		}
+	} else if shift == 3 {
+		a := uint32(4278255360)
+		for i := range vector.functionValue {
+			vector.functionValue[i] = a
+		}
+	} else if shift == 4 {
+		a := uint32(4294901760)
+		for i := range vector.functionValue {
+			vector.functionValue[i] = a
+		}
+	}
+	return vector
+}
+
+func getMaxEl(mass []int) (int, int) {
+	maxV, index := 0, 0
+	for i, v := range mass {
+		if v < 0 {
+			v *= -1
+		}
+		if v > maxV {
+			maxV = v
+			index = i
+		}
+	}
+	return maxV, index
+}
+
+func (b BF) newBFArgs2(variablesNumb int, sliceLen int, functionValue []uint32) BF { // конструктор по умолчанию
+	b.variablesNumb = variablesNumb
+	b.sliceLen = sliceLen
+	b.functionValue = functionValue
+	return b
+}
+
+func (b BF) newBF() BF { // конструктор по умолчанию
+	b.variablesNumb = 0
+	b.sliceLen = 0
+	return b
 }
 
 func (b BF) newBFArgs(variablesNumb int, value int) (BF, error) { // конструктор с аргументами
@@ -72,14 +127,6 @@ func (b BF) copyBF(pattern BF) BF { // конструктор копирован
 	b.functionValue = nil
 	b.functionValue = append(b.functionValue, pattern.functionValue...)
 	return b
-}
-
-func reverse(s string) string { // разворот строки
-	runes := []rune(s)
-	for i, j := 0, len(runes)-1; i < j; i, j = i+1, j-1 {
-		runes[i], runes[j] = runes[j], runes[i]
-	}
-	return string(runes)
 }
 
 func (b BF) stringToBF(s string) BF { // конструктор по строке (если длина строки != степени двойки, считаем, что недостающие символы - нули)
@@ -277,38 +324,6 @@ func (b BF) getANF() string {
 	return s
 }
 
-func getMulVector(shift int, len int) BF {
-	var vector BF
-	vector, _ = vector.newBFArgs(len, 0)
-	if shift == 0 {
-		a := uint32(2863311530)
-		for i := range vector.functionValue {
-			vector.functionValue[i] = a
-		}
-	} else if shift == 1 {
-		a := uint32(3435973836)
-		for i := range vector.functionValue {
-			vector.functionValue[i] = a
-		}
-	} else if shift == 2 {
-		a := uint32(4042322160)
-		for i := range vector.functionValue {
-			vector.functionValue[i] = a
-		}
-	} else if shift == 3 {
-		a := uint32(4278255360)
-		for i := range vector.functionValue {
-			vector.functionValue[i] = a
-		}
-	} else if shift == 4 {
-		a := uint32(4294901760)
-		for i := range vector.functionValue {
-			vector.functionValue[i] = a
-		}
-	}
-	return vector
-}
-
 func (b BF) getMobius() BF {
 	var g, s, m, stepVector BF
 	g = b
@@ -400,12 +415,37 @@ func (b BF) correlationDegree() int {
 	return corDeg
 }
 
+func (b BF) NfMean() int {
+	F := b.WalshHadamardTransformation()
+	max, _ := getMaxEl(F)
+	N := (1 << (b.variablesNumb - 1)) - (max >> 1)
+	return N
+}
+
+func (b BF) NAP() string {
+	F := b.WalshHadamardTransformation()
+	_, index := getMaxEl(F)
+	if index == 0 || index == len(F)-1 {
+		if F[index] > 0 {
+			return "0"
+		} else {
+			return "1"
+		}
+	} else {
+		nap := ""
+		for i := 0; i < 32; i += 1 {
+			if index&(1<<i) > 0 {
+				nap += "x" + strconv.FormatInt(int64(i), 10) + "+"
+			}
+		}
+		return nap[:len(nap)-1]
+	}
+}
+
 func main() {
 	var b BF
-	//b = b.stringToBF("01100110")
-	b, _ = b.newBFArgs(29, 1)
-	start := time.Now()
-	b.correlationDegree()
-	duration := time.Since(start)
-	fmt.Println(duration)
+	//b = b.stringToBF("0001000100011110")
+	b, _ = b.newBFArgs(17, 1)
+	fmt.Println("Nf:", b.NfMean())
+	fmt.Println("NAP:", b.NAP())
 }
