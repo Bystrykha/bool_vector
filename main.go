@@ -425,7 +425,8 @@ func (b BF) NfMean() int {
 func (b BF) NAP() string {
 	F := b.WalshHadamardTransformation()
 	_, index := getMaxEl(F)
-	if index == 0 || index == len(F)-1 {
+	fmt.Println("index:", index)
+	if index == 0 {
 		if F[index] > 0 {
 			return "0"
 		} else {
@@ -444,8 +445,9 @@ func (b BF) NAP() string {
 
 func main() {
 	var b BF
-	//b = b.stringToBF("0001000100011110")
-	b, _ = b.newBFArgs(17, 1)
+	b = b.stringToBF("01101001")
+	//b, _ = b.newBFArgs(17, 1)
+	b.outVector()
 	fmt.Println("Nf:", b.NfMean())
 	fmt.Println("NAP:", b.NAP())
 }
