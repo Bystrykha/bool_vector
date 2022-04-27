@@ -373,7 +373,6 @@ func (b BF) WalshHadamardTransformation() []int {
 	for _, v := range indexesOne {
 		F[v] = -1
 	}
-
 	for i := 0; i < b.variablesNumb; i += 1 {
 		k := 1 << i
 		for j := 0; j < (1 << b.variablesNumb); {
@@ -425,7 +424,6 @@ func (b BF) NfMean() int {
 func (b BF) NAP() string {
 	F := b.WalshHadamardTransformation()
 	_, index := getMaxEl(F)
-	fmt.Println("index:", index)
 	if index == 0 {
 		if F[index] > 0 {
 			return "0"
@@ -443,11 +441,82 @@ func (b BF) NAP() string {
 	}
 }
 
+func (b BF) AutoCorrelation() []int {
+	res := b.WalshHadamardTransformation()
+	for i, v := range res {
+		res[i] = v * v
+	}
+	for i := 0; i < b.variablesNumb; i += 1 {
+		k := 1 << i
+		for j := 0; j < (1 << b.variablesNumb); {
+			for l := 0; l < k; l += 1 {
+				a := res[j]
+				c := res[j+k]
+				res[j] = a + c
+				res[j+k] = a - c
+				j += 1
+			}
+			j += k
+		}
+	}
+	for i, v := range res {
+		res[i] = v >> b.variablesNumb
+	}
+	return res
+}
+
+func (b BF) CN() int {
+	autoCor := b.AutoCorrelation()
+	max := 0
+	for i := 1; i < len(autoCor); i += 1 {
+		if autoCor[i] < 0 {
+			v := autoCor[i] * -1
+			if max < v {
+				max = v
+			}
+			continue
+		}
+		if max < autoCor[i] {
+			max = autoCor[i]
+		}
+	}
+	res := 1<<(b.variablesNumb-2) - (max >> 2)
+	return res
+}
+
+func (b BF) maxDegPC() int {
+	acVec := b.AutoCorrelation()
+	for i := 1; i <= b.variablesNumb; i += 1 {
+		a := ((1 << i) - 1) << (b.variablesNumb - i)
+		for a != ((1 << i) - 1) {
+			if acVec[a] != 0 {
+				return i - 1
+			}
+			q := (a + 1) & a
+			buf := (q - 1) ^ a
+			weight := buf - ((buf >> 1) & 0x55555555)
+			weight = (weight & 0x33333333) + ((weight >> 2) & 0x33333333)
+			weight = (weight + (weight >> 4)) & 0x0F0F0F0F
+			weight = weight + (weight >> 8)
+			weight = weight + (weight >> 16)
+			weight = weight & 0x3F
+			c := weight - 2
+			a = (((((a + 1) ^ a) << 1) + 1) << c) ^ q
+		}
+		if acVec[a] != 0 {
+			return i - 1
+		}
+	}
+	return b.variablesNumb
+}
+
 func main() {
 	var b BF
-	b = b.stringToBF("01101001")
-	//b, _ = b.newBFArgs(17, 1)
-	b.outVector()
-	fmt.Println("Nf:", b.NfMean())
-	fmt.Println("NAP:", b.NAP())
+	b = b.stringToBF("1000100011110001")
+	fmt.Println(b.maxDegPC())
+	//b, _ = b.newBFArgs(27, 1)
+	//fmt.Println("1: ", b.AutoCorrelation())
+	//fmt.Println("2: ", b.CN())
+	//fmt.Println(b.AutoCorrelation())
+	//b.outVector()
 }
